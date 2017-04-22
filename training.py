@@ -71,9 +71,6 @@ def train():
 	print(len(id_encoded_sentences))
 	
 	print("--------------------------")
-	print("--------------------------")
-	print("--------------------------")
-	
 	
 	total_size = len(em_encoded_sentences)
 	params['batch_size'] = batch_size
@@ -82,80 +79,80 @@ def train():
 	saver = tf.train.Saver()
 	
 	with tf.Session() as sess:
-		with tf.device("/cpu:0"):	
-			summaries = tf.summary.merge_all()
-			#writer = tf.summary.FileWriter('./graph', time.strftime("%Y-%m-%d-%H-%M-%S"))
-			#writer.add_graph(sess.graph)
-			
-			sess.run(tf.global_variables_initializer())
-			
-			model_ckpt_file = './status/model.ckpt'
-			#if os.path.isfile(model_ckpt_file):
-			if restore == True:
-				saver.restore(sess, model_ckpt_file)
-			
-			for e in range(epochs):
-				# get bunch of data
-				start_time = dt.datetime.now()
-				
-				start = 0
-				for i in range(int(total_size/batch_size) + 1):
-					print("processing", i)
-					end = start + batch_size
-					
-					if i == total_size/batch_size:
-						if start > total_size - 1:
-							break
-						else:
-							end = total_size - 1
-						
-						
-					#1. encoder_final_states
-					em_en_tran = np.transpose(em_encoded_sentences[start:end], (1,0,2))
-					em_de_tran = np.transpose(em_encoded_sentences_for_decoder[start:end], (1,0,2))
-					id_en_tran = np.transpose(id_encoded_sentences[start:end])
-					
-					feed = {model.encoder_input:em_encoded_sentences[start:end]}
-					
-					if  e % 30 == 0:  # end step of traning, cal the state of encoder
-						encoder_states = sess.run(model.encoder_final_states, feed_dict=feed)
-						
-						#feed_state = dict()
-						#feed_state[model.decorder_initial_state] = encoder_states
-						#******************************************************************************
-						for r in range(end-start):
-							#model.C[start + r] = encoder_states[r]
-							sess.run(model.C[start + r].assign(encoder_states[r]))
-						#******************************************************************************
-						
-					feed_decoder_input = dict()
-					feed_decoder_target = dict()
-					
-					
-					for i in range(seq_length):
-						feed_decoder_input[model.decoder_input[i]] = em_de_tran[i]
-						feed_decoder_target[model.decoder_target[i]] = id_en_tran[i]
-					
-					feed_decoder = dict()
-					feed_decoder = feed_decoder_input
-					feed_decoder.update(feed_decoder_target)
-					#feed_decoder.update(feed_state)
-					feed_decoder.update(feed)
-					_cost, _ = sess.run([model.cost, model.train], feed_dict=feed_decoder)
+		summaries = tf.summary.merge_all()
+		#writer = tf.summary.FileWriter('./graph', time.strftime("%Y-%m-%d-%H-%M-%S"))
+		#writer.add_graph(sess.graph)
 
-					start = end
+		sess.run(tf.global_variables_initializer())
+
+		model_ckpt_file = './status/model.ckpt'
+		#if os.path.isfile(model_ckpt_file):
+		if restore == True:
+			saver.restore(sess, model_ckpt_file)
+
+		for e in range(epochs):
+			# get bunch of data
+			start_time = dt.datetime.now()
+
+			start = 0
+			for i in range(int(total_size/batch_size) + 1):
+				if i >= 3000:
+					break
 				
-				print("Take", str((dt.datetime.now() - start_time).seconds), "seconds for 1 cycles")
-				
-			
-				if e % 30 == 0:
-					saver.save(sess, model_ckpt_file)
-					print("mode saved to ", model_ckpt_file)
-					print("%d, %d" % (i, e))
-					print("the cost = ", _cost)
-			
-			print(model.C)
-			print(sess.run(model.C))		
+				print("processing", i)
+				end = start + batch_size
+
+				if i == total_size/batch_size:
+					if start > total_size - 1:
+						break
+					else:
+						end = total_size - 1
+
+
+				#1. encoder_final_states
+				em_en_tran = np.transpose(em_encoded_sentences[start:end], (1,0,2))
+				em_de_tran = np.transpose(em_encoded_sentences_for_decoder[start:end], (1,0,2))
+				id_en_tran = np.transpose(id_encoded_sentences[start:end])
+
+				feed = {model.encoder_input:em_encoded_sentences[start:end]}
+
+
+				encoder_states = sess.run(model.encoder_final_states, feed_dict=feed)
+
+				#feed_state = dict()
+				#feed_state[model.decorder_initial_state] = encoder_states
+				#******************************************************************************
+				for r in range(end-start):
+					#model.C[start + r] = encoder_states[r]
+					sess.run(model.C[start + r].assign(encoder_states[r]))
+				#******************************************************************************
+
+				feed_decoder_input = dict()
+				feed_decoder_target = dict()
+
+
+				for i in range(seq_length):
+					feed_decoder_input[model.decoder_input[i]] = em_de_tran[i]
+					feed_decoder_target[model.decoder_target[i]] = id_en_tran[i]
+
+				feed_decoder = dict()
+				feed_decoder = feed_decoder_input
+				feed_decoder.update(feed_decoder_target)
+				#feed_decoder.update(feed_state)
+				feed_decoder.update(feed)
+				_cost, _ = sess.run([model.cost, model.train], feed_dict=feed_decoder)
+
+				start = end
+
+			print("Take", str((dt.datetime.now() - start_time).seconds), "seconds for 1 cycles")
+
+			saver.save(sess, model_ckpt_file)
+			print("mode saved to ", model_ckpt_file)
+			print("%d, %d" % (i, e))
+			print("the cost = ", _cost)
+
+		print(model.C)
+		print(sess.run(model.C))		
 
 		
 if __name__ == '__main__':
